@@ -42,7 +42,7 @@ button {
 }
 
 button {
-    background-color: #4CAF50;
+    background-color: #55aa58;
     color: white;
     border: none;
     padding: 8px 12px;
@@ -57,7 +57,7 @@ button {
 }
 
 button:hover {
-    background-color: #45a049;
+    background-color: #347038;
 }
 
 #calculateBtn {
