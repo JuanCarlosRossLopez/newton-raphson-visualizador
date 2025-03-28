@@ -1,138 +1,150 @@
-document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("nr-form").addEventListener("submit", (event) => {
-        event.preventDefault();
+// Variables globales
+let functionChart = null;
+const ctx = document.getElementById("functionChart").getContext("2d");
 
-        const funcion = document.getElementById("funcion").value;
-        const derivada = document.getElementById("derivada").value;
-        const x0 = parseFloat(document.getElementById("x0").value);
+// Event Listeners
+document
+  .getElementById("deriveBtn")
+  .addEventListener("click", calculateDerivative);
+document
+  .getElementById("calculateBtn")
+  .addEventListener("click", calculateRoot);
 
-        try {
-            const iterations = newtonRaphson(funcion, derivada, x0);
-            displayResults(iterations);
-            plotGraph(funcion, iterations);
-        } catch (error) {
-            document.getElementById("results").innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
-        }
-    });
-});
+// Función para calcular la derivada
+function calculateDerivative() {
+  const funcStr = document.getElementById("func").value.trim();
+  const derivativeInput = document.getElementById("derivative");
 
-function newtonRaphson(fString, fPrimeString, x0, maxIter = 100, tol = 1e-6) {
-    const f = math.compile(fString); // Usar math.js
-    const fPrime = math.compile(fPrimeString);
+  if (!funcStr) {
+    alert("Por favor, ingresa una función antes de derivar.");
+    return;
+  }
 
-    let x = x0;
-    let iterations = [];
-
-    for (let i = 0; i < maxIter; i++) {
-        const fx = f.evaluate({ x });
-        const fPrimeX = fPrime.evaluate({ x });
-        if (Math.abs(fx) < tol) break;
-
-        if (fPrimeX === 0) {
-            throw new Error("La derivada se anula, no se puede continuar.");
-        }
-
-        const xNext = x - fx / fPrimeX;
-        iterations.push({ iter: i + 1, x, fx });
-        x = xNext;
-    }
-
-    return iterations;
+  try {
+    const derivative = math.derivative(funcStr, "x");
+    derivativeInput.value = derivative.toString();
+  } catch (e) {
+    alert(`Error al derivar: ${e.message}`);
+    derivativeInput.value = "";
+  }
 }
 
-function displayResults(iterations) {
-    const resultsDiv = document.getElementById("results");
-    resultsDiv.innerHTML = "";
+// Función principal (Newton-Raphson)
+function calculateRoot() {
+  const funcStr = document.getElementById("func").value;
+  const derivativeStr = document.getElementById("derivative").value;
+  const initialGuess = parseFloat(
+    document.getElementById("initialGuess").value
+  );
+  const tolerance = parseFloat(document.getElementById("tolerance").value);
+  const resultDiv = document.getElementById("result");
 
-    const table = document.createElement("table");
-    table.className = "w-full border-collapse border border-gray-300";
+  // Validaciones
+  if (!funcStr || !derivativeStr || isNaN(initialGuess)) {
+    resultDiv.innerHTML =
+      '<span class="error">Completa todos los campos correctamente.</span>';
+    return;
+  }
 
-    const headerRow = document.createElement("tr");
-    headerRow.innerHTML = `
-        <th class="border border-gray-300 p-2">Iteración</th>
-        <th class="border border-gray-300 p-2">x</th>
-        <th class="border border-gray-300 p-2">f(x)</th>
-    `;
-    table.appendChild(headerRow);
+  let f, df;
+  try {
+    f = math.compile(funcStr);
+    df = math.compile(derivativeStr);
+  } catch (e) {
+    resultDiv.innerHTML = `<span class="error">Error en la expresión: ${e.message}</span>`;
+    return;
+  }
 
-    iterations.forEach(({ iter, x, fx }) => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td class="border border-gray-300 p-2">${iter}</td>
-            <td class="border border-gray-300 p-2">${x.toFixed(6)}</td>
-            <td class="border border-gray-300 p-2">${fx.toFixed(6)}</td>
-        `;
-        table.appendChild(row);
-    });
+  // Algoritmo Newton-Raphson
+  let x = initialGuess;
+  let iterations = 0;
+  let error = Infinity;
+  let output = "Iteraciones:\n\n";
+  const iterationPoints = [];
 
-    resultsDiv.appendChild(table);
-}
-
-function plotGraph(funcion, iterations) {
-    const f = math.compile(funcion);
-
-    const xValues = [];
-    const yValues = [];
-    for (let i = -10; i <= 10; i += 0.1) {
-        xValues.push(i);
-        yValues.push(f.evaluate({ x: i }));
+  while (error > tolerance && iterations < 100) {
+    let fx, dfx;
+    try {
+      fx = f.evaluate({ x: x });
+      dfx = df.evaluate({ x: x });
+    } catch (e) {
+      output += `<span class="error">Error al evaluar: ${e.message}</span>`;
+      resultDiv.innerHTML = output;
+      return;
     }
 
-    const iterX = iterations.map(({ x }) => x);
-    const iterY = iterations.map(({ fx }) => fx);
+    if (Math.abs(dfx) < 1e-10) {
+      output +=
+        '<span class="error">Derivada cercana a cero. No converge.</span>';
+      resultDiv.innerHTML = output;
+      return;
+    }
 
-    const ctx = document.getElementById("myChart").getContext("2d");
-    new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: xValues,
-            datasets: [
-                {
-                    label: "Función f(x)",
-                    data: yValues,
-                    borderColor: "rgba(54, 162, 235, 1)",
-                    backgroundColor: "rgba(54, 162, 235, 0.2)",
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.1,
-                },
-                {
-                    label: "Iteraciones (Newton-Raphson)",
-                    data: iterY,
-                    borderColor: "rgba(255, 99, 132, 1)",
-                    backgroundColor: "rgba(255, 99, 132, 0.2)",
-                    pointRadius: 5,
-                    pointBackgroundColor: "rgba(255, 99, 132, 1)",
-                    fill: false,
-                    showLine: false, // No conectar los puntos con líneas
-                },
-            ],
+    const xNew = x - fx / dfx;
+    error = Math.abs(xNew - x);
+    output += `Iteración ${iterations}: x = ${x.toFixed(
+      6
+    )}, f(x) = ${fx.toFixed(6)}, Error = ${error.toFixed(6)}\n`;
+    iterationPoints.push({ x: x, y: fx });
+    x = xNew;
+    iterations++;
+  }
+
+  // Resultado final
+  resultDiv.innerHTML =
+    iterations >= 100
+      ? output +
+        '\n<span class="error">No converge después de 100 iteraciones.</span>'
+      : output +
+        `\n<b>Raíz aproximada:</b> x ≈ ${x.toFixed(6)} (Error < ${tolerance})`;
+
+  plotFunctionAndIterations(f, iterationPoints, initialGuess);
+}
+
+// Graficar función e iteraciones
+function plotFunctionAndIterations(f, iterationPoints, x0) {
+  const xMin = x0 - 3;
+  const xMax = x0 + 3;
+  const functionData = [];
+
+  for (let x = xMin; x <= xMax; x += (xMax - xMin) / 100) {
+    try {
+      functionData.push({ x: x, y: f.evaluate({ x: x }) });
+    } catch (e) {
+      console.error(`Error al evaluar x=${x}:`, e);
+    }
+  }
+
+  if (functionChart) functionChart.destroy();
+
+  functionChart = new Chart(ctx, {
+    type: "scatter",
+    data: {
+      datasets: [
+        {
+          label: "Función f(x)",
+          data: functionData,
+          borderColor: "rgb(75, 192, 192)",
+          borderWidth: 2,
+          pointRadius: 0,
+          showLine: true,
         },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: "top",
-                },
-                title: {
-                    display: true,
-                    text: "Gráfica de la Función y Newton-Raphson",
-                },
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: "x",
-                    },
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: "f(x)",
-                    },
-                },
-            },
+        {
+          label: "Iteraciones",
+          data: iterationPoints,
+          borderColor: "rgb(255, 99, 132)",
+          backgroundColor: "rgb(255, 99, 132)",
+          pointRadius: 5,
+          showLine: true,
         },
-    });
+      ],
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { type: "linear", position: "bottom", title: { text: "x" } },
+        y: { type: "linear", position: "left", title: { text: "f(x)" } },
+      },
+    },
+  });
 }

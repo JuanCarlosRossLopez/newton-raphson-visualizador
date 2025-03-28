@@ -3,134 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Newton-Raphson: Visualización Interactiva</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .floating-buttons {
-            position: fixed;
-            right: 20px;
-            bottom: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            z-index: 1000;
-        }
-        .floating-buttons button {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .floating-buttons button:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
-        }
-        .modal {
-            display: none;
-        }
-        .modal.active {
-            display: flex;
-        }
-    </style>
+    <title>Newton-Raphson con Derivación Automática</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.2.0/math.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="funcionalidad.js" defer></script>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body class="min-h-screen flex flex-col bg-gradient-to-br from-blue-100 to-purple-200 text-gray-900 font-sans">
-    <header class="w-full p-6 text-center text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 text-white shadow-md">
-        Newton-Raphson: Visualización Interactiva
-    </header>
-    <main class="flex-grow w-full max-w-4xl p-6 mx-auto mt-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="p-6 bg-white rounded-lg shadow-lg">
-                <h2 class="text-2xl font-semibold mb-4">Ingresar Datos</h2>
-                <form id="nr-form">
-                    <div class="mb-4">
-                        <label for="funcion" class="block text-sm font-medium">Función:</label>
-                        <input type="text" id="funcion" placeholder="Ejemplo: x^2 - 4" class="mt-1 p-2 w-full rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    </div>
-                    <div class="mb-4">
-                        <label for="derivada" class="block text-sm font-medium">Derivada:</label>
-                        <input type="text" id="derivada" placeholder="Ejemplo: 2x" class="mt-1 p-2 w-full rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    </div>
-                    <div class="mb-4">
-                        <label for="x0" class="block text-sm font-medium">Valor inicial (x0):</label>
-                        <input type="number" id="x0" class="mt-1 p-2 w-full rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    </div>
-                    <button type="submit" class="w-full py-2 mt-4 bg-gradient-to-r from-blue-400 to-purple-400 text-white font-medium rounded shadow-md hover:shadow-lg transition">
-                        Calcular
-                    </button>
-                </form>
-            </div>
-            <div class="p-6 bg-white rounded-lg shadow-lg">
-                <h2 class="text-2xl font-semibold mb-4">Visualización</h2>
-                <div id="graph" class="w-full h-96 rounded flex items-center justify-center bg-gray-100 shadow-inner">
-                    <canvas id="myChart"></canvas>
-                </div>
-                <div id="results" class="mt-4 text-sm text-gray-700"></div>
-            </div>
+<body>
+    <div class="container">
+        <h1>Método Newton-Raphson con Derivación Automática</h1>
+        <label for="func">Función \( f(x) \):</label>
+        <input type="text" id="func" placeholder="Ejemplo: x^3 - 2*x - 5" value="x^3 - 2*x - 5">
+        
+        <label for="derivative">Derivada \( f'(x) \):</label>
+        <div class="input-group">
+            <input type="text" id="derivative" placeholder="Ejemplo: 3*x^2 - 2" value="3*x^2 - 2">
+            <button id="deriveBtn">Derivar</button>
         </div>
-    </main>
-    <div class="floating-buttons">
-        <button id="guia-button" class="bg-yellow-400 text-white shadow-md hover:bg-yellow-500">📖</button>
-        <button id="aburrido-button" class="bg-green-400 text-white shadow-md hover:bg-green-500">🎮</button>
-    </div>
-    <div id="guia-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-        <div class="bg-white rounded-lg shadow-lg p-6 w-96">
-            <h2 class="text-xl font-semibold mb-4">Cómo Usar</h2>
-            <p>1. Ingresa la función matemática en el campo correspondiente.<br>2. Proporciona su derivada.<br>3. Ingresa el valor inicial para comenzar.<br>4. Presiona "Calcular" para visualizar los resultados.</p>
-            <button id="close-guia-modal" class="mt-4 py-2 px-4 bg-red-400 text-white font-medium rounded hover:bg-red-500 transition">Cerrar</button>
+        
+        <label for="initialGuess">Valor inicial \( x_0 \):</label>
+        <input type="number" id="initialGuess" placeholder="Ejemplo: 2" value="2">
+        
+        <label for="tolerance">Tolerancia (error aceptable):</label>
+        <input type="number" id="tolerance" placeholder="Ejemplo: 0.0001" value="0.0001" step="0.0001">
+        
+        <button id="calculateBtn">Calcular Raíz</button>
+        
+        <div id="result"></div>
+        <div class="chart-container">
+            <canvas id="functionChart"></canvas>
         </div>
     </div>
-    <div id="aburrido-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-        <div class="bg-white rounded-lg shadow-lg p-6 w-96">
-            <h2 class="text-xl font-semibold mb-4">Mini Juego: Adivina el Número</h2>
-            <p>Elige un número entre 1 y 100 y trata de adivinar el número secreto.</p>
-            <input type="number" id="user-guess" class="p-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300 mt-4" placeholder="Tu suposición">
-            <button id="submit-guess" class="mt-4 py-2 px-4 bg-blue-400 text-white font-medium rounded hover:bg-blue-500 transition">Adivinar</button>
-            <p id="game-feedback" class="mt-4 text-sm text-gray-700"></p>
-            <button id="close-aburrido-modal" class="mt-4 py-2 px-4 bg-red-400 text-white font-medium rounded hover:bg-red-500 transition">Cerrar</button>
-        </div>
-    </div>
-    <footer class="w-full p-4 text-center bg-gradient-to-r from-purple-400 to-blue-400 text-white mt-6 shadow-md">
-        © 2025 Newton-Raphson Visualización
-    </footer>
-
-    <script>
-        document.getElementById('guia-button').addEventListener('click', () => {
-            document.getElementById('guia-modal').classList.add('active');
-        });
-
-        document.getElementById('close-guia-modal').addEventListener('click', () => {
-            document.getElementById('guia-modal').classList.remove('active');
-        });
-
-        document.getElementById('aburrido-button').addEventListener('click', () => {
-            document.getElementById('aburrido-modal').classList.add('active');
-        });
-
-        document.getElementById('close-aburrido-modal').addEventListener('click', () => {
-            document.getElementById('aburrido-modal').classList.remove('active');
-        });
-
-        const secretNumber = Math.floor(Math.random() * 100) + 1;
-        let attempts = 0;
-
-        document.getElementById('submit-guess').addEventListener('click', () => {
-            const userGuess = parseInt(document.getElementById('user-guess').value);
-            attempts++;
-            if (userGuess === secretNumber) {
-                document.getElementById('game-feedback').textContent = `¡Felicidades! Adivinaste el número ${secretNumber} en ${attempts} intentos.`;
-                document.getElementById('game-feedback').classList.add('text-green-500');
-            } else if (userGuess < secretNumber) {
-                document.getElementById('game-feedback').textContent = 'El número secreto es mayor.';
-                document.getElementById('game-feedback').classList.add('text-red-500');
-            } else {
-                document.getElementById('game-feedback').textContent = 'El número secreto es menor.';
-                document.getElementById('game-feedback').classList.add('text-red-500');
-            }
-        });
-    </script>
 </body>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.2.0/math.min.js"></script>
-<script src="funcionalidad.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </html>
